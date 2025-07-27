@@ -17,10 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from twilioImplAPI.views import CreateUserView, LoginView
+from twilioImplAPI.views import CreateUserView, LoginView, SMSView, VoiceCallView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('create_account/', CreateUserView.as_view(), name='create_user_and_login'),
     path('login/', LoginView.as_view(), name='login'),
+    path('sms/', SMSView.as_view(), name='sms'),
+    path('voice/', VoiceCallView.as_view(), name='voice_call'),
 ]
