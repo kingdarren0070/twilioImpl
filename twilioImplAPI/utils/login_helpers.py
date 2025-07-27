@@ -1,7 +1,10 @@
 import hashlib
 import secrets
 import base64
+import jwt
 
+from datetime import datetime, timedelta, timezone
+from django.conf import settings
 from twilioImplAPI.models import Login, User, Phone
 
 
@@ -133,4 +136,18 @@ def create_login(data):
     
     return login
 
-    
+def generate_jwt(user, username):
+    payload = {
+        'user_id': user.id,
+        'username': username,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'phone_number': user.phone_number.phone_number,
+        'communication_preference': user.communication_preference,
+        'exp': datetime.now(timezone.utc) + timedelta(hours=24),  # 24 hour expiration
+        'iat': datetime.now(timezone.utc)
+    }
+
+    token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+
+    return token
