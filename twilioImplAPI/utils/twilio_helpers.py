@@ -43,6 +43,12 @@ def send_sms(to_number, message, from_number=None):
         client = get_twilio_client()
         from_number = from_number or os.getenv('TWILIO_PHONE_NUMBER')
         
+        if not from_number:
+            return {
+                'success': False,
+                'error': 'Twilio phone number not configured'
+            }
+        
         message = client.messages.create(
             body=message,
             from_=from_number,
@@ -75,6 +81,12 @@ def make_voice_call(to_number, message, from_number=None):
     try:
         client = get_twilio_client()
         from_number = from_number or os.getenv('TWILIO_PHONE_NUMBER')
+        
+        if not from_number:
+            return {
+                'success': False,
+                'error': 'Twilio phone number not configured'
+            }
         
         # Generate TwiML inline
         twiml = generate_twiml(message)

@@ -1,11 +1,27 @@
 import hashlib
 import secrets
 import base64
-import jwt
+import re
 
 from datetime import datetime, timedelta, timezone
 from django.conf import settings
 from twilioImplAPI.models import Login, User, Phone
+from twilioImplAPI.utils.jwt_helpers import generate_jwt
+
+
+def validate_phone_number(phone_number):
+    """
+    Validate phone number format.
+    
+    Args:
+        phone_number (str): Phone number to validate
+    
+    Returns:
+        bool: True if valid, False otherwise
+    """
+    # Basic phone number validation (E.164 format)
+    pattern = r'^\+[1-9]\d{1,14}$'
+    return bool(re.match(pattern, phone_number))
 
 
 def generate_salt():
@@ -67,10 +83,24 @@ def verify_password(password, hashed_password, salt, iterations=100000):
     return test_hash == hashed_password
 
 def username_verification(username):
-    username_verification = Login.objects.filter(username=username).exists()
-    if username_verification:
-        return True
-    return False
+    """
+    Check if username already exists.
+    
+    Args:
+        username (str): Username to check
+    
+    Returns:
+        bool: True if username exists, False otherwise
+    """
+    if not username or not isinstance(username, str):
+        return False
+    
+    # Basic sanitization - remove whitespace and limit length
+    username = username.strip()
+    if len(username) > 100 or len(username) < 1:
+        return False
+    
+    return Login.objects.filter(username=username).exists()
 
 def get_or_create_phone(phone_number):
     """
@@ -93,6 +123,10 @@ def create_user(data):
     last_name = data.get('last_name')
     phone_number = data.get('phone_number')
     communication_preference = data.get('communication_preference')
+    
+    # Validate phone number format
+    if not validate_phone_number(phone_number):
+        raise ValueError("Invalid phone number format. Use E.164 format (e.g., +1234567890)")
     
     # Create or get the phone number first
     phone = get_or_create_phone(phone_number)
@@ -135,19 +169,3 @@ def create_login(data):
     )
     
     return login
-
-def generate_jwt(user, username):
-    payload = {
-        'user_id': user.id,
-        'username': username,
-        'first_name': user.first_name,
-        'last_name': user.last_name,
-        'phone_number': user.phone_number.phone_number,
-        'communication_preference': user.communication_preference,
-        'exp': datetime.now(timezone.utc) + timedelta(hours=24),  # 24 hour expiration
-        'iat': datetime.now(timezone.utc)
-    }
-
-    token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
-
-    return token

@@ -2,59 +2,32 @@ import jwt
 from functools import wraps
 from django.http import JsonResponse
 from django.conf import settings
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
-def verify_jwt_token(token):
+def generate_jwt(user, username):
     """
-    Verify and decode JWT token.
+    Generate JWT token for user authentication.
     
     Args:
-        token (str): JWT token string
+        user (User): User object
+        username (str): Username
     
     Returns:
-        dict: Decoded token payload or None if invalid
+        str: JWT token
     """
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-        return payload
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None
+        payload = {
+            'user_id': user.id,
+            'username': username,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'phone_number': user.phone_number.phone_number,
+            'communication_preference': user.communication_preference,
+            'exp': datetime.now(timezone.utc) + timedelta(hours=24),  # 24 hour expiration
+            'iat': datetime.now(timezone.utc)
+        }
 
-def require_jwt_auth(view_func):
-    """
-    Decorator to require JWT authentication for views.
-    
-    Usage:
-        @require_jwt_auth
-        def my_view(request):
-            # Access user info from request.user_info
-            pass
-    """
-    @wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        # Get token from Authorization header
-        auth_header = request.headers.get('Authorization')
-        
-        if not auth_header or not auth_header.startswith('Bearer '):
-            return JsonResponse({
-                'message': 'Authorization header required',
-                'error': 'Missing or invalid Authorization header'
-            }, status=401)
-        
-        token = auth_header.split(' ')[1]
-        payload = verify_jwt_token(token)
-        
-        if not payload:
-            return JsonResponse({
-                'message': 'Invalid or expired token',
-                'error': 'Authentication failed'
-            }, status=401)
-        
-        # Add user info to request
-        request.user_info = payload
-        
-        return view_func(request, *args, **kwargs)
-    
-    return wrapper 
+        token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
+        return token
+    except Exception as e:
+        raise ValueError(f"Failed to generate JWT token: {str(e)}")
