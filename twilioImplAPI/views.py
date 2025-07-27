@@ -4,6 +4,8 @@ from django.conf import settings
 
 from twilioImplAPI.utils.login_helpers import create_login, create_user, generate_jwt, username_verification, verify_login
 from twilioImplAPI.utils.twilio_helpers import send_sms, make_voice_call
+from twilioImplAPI.utils.jwt_helpers import require_jwt_auth
+from twilioImplAPI.models import User
 
 # Create your views here.
 class CreateUserView(View):
@@ -57,9 +59,22 @@ class LoginView(View):
             return JsonResponse({'message': 'Invalid username or password'}, status=401)
     
 class SMSView(View):
+    @require_jwt_auth
     def post(self, request):
-        to_number = request.POST.get('to_number')
         message = request.POST.get('message')
+        
+        # Access authenticated user info
+        user_info = request.user_info
+        user_id = user_info['user_id']
+        
+        # Get user's phone number from database
+        try:
+            user = User.objects.get(id=user_id)
+            to_number = user.phone_number.phone_number
+        except User.DoesNotExist:
+            return JsonResponse({'message': 'User not found'}, status=404)
+        
+        print(f"Authenticated user: {user_info['username']}")
 
         try:
             result = send_sms(to_number, message)
@@ -71,9 +86,22 @@ class SMSView(View):
             return JsonResponse({'message': 'Failed to send SMS', 'error': str(e)}, status=500)
 
 class VoiceCallView(View):
+    @require_jwt_auth
     def post(self, request):
-        to_phone = request.POST.get('to_phone')
         message = request.POST.get('message')
+        
+        # Access authenticated user info
+        user_info = request.user_info
+        user_id = user_info['user_id']
+        
+        # Get user's phone number from database
+        try:
+            user = User.objects.get(id=user_id)
+            to_phone = user.phone_number.phone_number
+        except User.DoesNotExist:
+            return JsonResponse({'message': 'User not found'}, status=404)
+        
+        print(f"Authenticated user: {user_info['username']}")
 
         try:
             result = make_voice_call(to_phone, message)
