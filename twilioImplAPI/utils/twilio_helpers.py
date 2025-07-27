@@ -12,9 +12,32 @@ def get_twilio_client():
     
     return Client(account_sid, auth_token)
 
+def generate_twiml(message):
+    """
+    Generate TwiML XML for voice calls.
+    
+    Args:
+        message (str): Message to speak during the call
+    
+    Returns:
+        str: TwiML XML string
+    """
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="alice">{message}</Say>
+</Response>"""
+
 def send_sms(to_number, message, from_number=None):
     """
     Send SMS message using Twilio.
+    
+    Args:
+        to_number (str): Recipient phone number
+        message (str): Message content
+        from_number (str): Twilio phone number (optional, uses env var if not provided)
+    
+    Returns:
+        dict: Response from Twilio API
     """
     try:
         client = get_twilio_client()
@@ -37,16 +60,27 @@ def send_sms(to_number, message, from_number=None):
             'error': str(e)
         }
 
-def make_voice_call(to_number, twiml_url, from_number=None):
+def make_voice_call(to_number, message, from_number=None):
     """
     Make voice call using Twilio.
+    
+    Args:
+        to_number (str): Recipient phone number
+        message (str): Message to speak during the call
+        from_number (str): Twilio phone number (optional, uses env var if not provided)
+    
+    Returns:
+        dict: Response from Twilio API
     """
     try:
         client = get_twilio_client()
         from_number = from_number or os.getenv('TWILIO_PHONE_NUMBER')
         
+        # Generate TwiML inline
+        twiml = generate_twiml(message)
+        
         call = client.calls.create(
-            twiml=f'<Response><Say>{twiml_url}</Say></Response>',
+            twiml=twiml,
             from_=from_number,
             to=to_number
         )

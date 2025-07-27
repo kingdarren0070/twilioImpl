@@ -3,7 +3,7 @@ from django.views import View
 from django.conf import settings
 
 from twilioImplAPI.utils.login_helpers import create_login, create_user, generate_jwt, username_verification, verify_login
-from twilioImplAPI.utils.twilio_helpers import send_sms
+from twilioImplAPI.utils.twilio_helpers import send_sms, make_voice_call
 
 # Create your views here.
 class CreateUserView(View):
@@ -62,8 +62,24 @@ class SMSView(View):
         message = request.POST.get('message')
 
         try:
-            send_sms(to_number, message)
+            result = send_sms(to_number, message)
+            if result['success']:
+                return JsonResponse({'message': 'SMS sent successfully'}, status=200)
+            else:
+                return JsonResponse({'message': 'Failed to send SMS', 'error': result['error']}, status=500)
         except Exception as e:
             return JsonResponse({'message': 'Failed to send SMS', 'error': str(e)}, status=500)
-        
-        return JsonResponse({'message': 'SMS sent successfully'}, status=200)
+
+class VoiceCallView(View):
+    def post(self, request):
+        to_phone = request.POST.get('to_phone')
+        message = request.POST.get('message')
+
+        try:
+            result = make_voice_call(to_phone, message)
+            if result['success']:
+                return JsonResponse({'message': 'Voice call initiated successfully'}, status=200)
+            else:
+                return JsonResponse({'message': 'Failed to make voice call', 'error': result['error']}, status=500)
+        except Exception as e:
+            return JsonResponse({'message': 'Failed to make voice call', 'error': str(e)}, status=500)
